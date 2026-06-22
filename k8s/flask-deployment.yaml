@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-ingestion
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-ingestion
+  template:
+    metadata:
+      labels:
+        app: flask-ingestion
+    spec:
+      containers:
+      - name: flask-ingestion
+        image: <ACR_NAME>.azurecr.io/flask-ingestion:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            secretKeyRef:
+              name: kafka-secrets
+              key: bootstrap-servers
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "250m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flask-ingestion-svc
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 5000
+  selector:
+    app: flask-ingestion
