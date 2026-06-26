@@ -3,7 +3,7 @@ version: '3.8'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
-    container_name: zookeeper
+    container_name: zookeeper-local
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -12,7 +12,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.3.0
-    container_name: kafka
+    container_name: kafka-local
     depends_on:
       - zookeeper
     ports:
@@ -24,10 +24,11 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   postgres:
     image: postgres:15
-    container_name: postgres
+    container_name: postgres-local
     environment:
       POSTGRES_USER: agro_user
       POSTGRES_PASSWORD: agro_password
@@ -35,25 +36,26 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./db-init:/docker-entrypoint-initdb.d
 
-  flask-ingestion:
-    build:
-      context: ./src/flask-ingestion
-    container_name: flask-ingestion
+  ingestion-api:
+    build: ./ingestion-api
+    container_name: ingestion-api-local
     ports:
       - "5000:5000"
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=iot-telemetry-events
     depends_on:
       - kafka
 
-  kafka-consumer:
-    build:
-      context: ./src/kafka-consumer
-    container_name: kafka-consumer
+  consumer:
+    build: ./consumer
+    container_name: consumer-local
     environment:
       - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - KAFKA_TOPIC=iot-telemetry-events
+      - KAFKA_GROUP_ID=agrostream-consumer-group
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=agro_user
@@ -62,6 +64,3 @@ services:
     depends_on:
       - kafka
       - postgres
-
-volumes:
-  postgres_data:
