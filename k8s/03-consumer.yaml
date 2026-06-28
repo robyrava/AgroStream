@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemetry-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemetry-consumer
+  template:
+    metadata:
+      labels:
+        app: telemetry-consumer
+    spec:
+      containers:
+        - name: consumer
+          image: "acr-agrostream-registry.azurecr.io/telemetry-consumer:v1.0.0"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC
+              value: "iot-telemetry-events"
+            - name: KAFKA_GROUP_ID
+              value: "agrostream-consumer-group"
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: POSTGRES_HOST
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: POSTGRES_PORT
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: POSTGRES_DB

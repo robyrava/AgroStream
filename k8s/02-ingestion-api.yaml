@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingestion-api
+  template:
+    metadata:
+      labels:
+        app: ingestion-api
+    spec:
+      containers:
+        - name: api
+          image: "acr-agrostream-registry.azurecr.io/ingestion-api:v1.0.0"
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: agrostream-secrets
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: KAFKA_TOPIC
+              value: "iot-telemetry-events"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-api-service
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 5000
+  selector:
+    app: ingestion-api
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ingestion-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ingestion-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

@@ -19,18 +19,22 @@ DB_USER = os.environ.get('POSTGRES_USER', 'agro_user')
 DB_PASS = os.environ.get('POSTGRES_PASSWORD', 'agro_password')
 
 def get_db_connection():
-    try:
-        conn = psycopg2.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASS
-        )
-        return conn
-    except Exception as e:
-        logger.error(f"Error connecting to database: {e}")
-        return None
+    import time
+    max_retries = 10
+    for i in range(max_retries):
+        try:
+            conn = psycopg2.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASS
+            )
+            return conn
+        except Exception as e:
+            logger.error(f"Error connecting to database (attempt {i+1}/{max_retries}): {e}")
+            time.sleep(3)
+    return None
 
 def process_message(msg_value):
     try:
@@ -76,8 +80,12 @@ def main():
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:
                     logger.debug(f"Reached end of partition: {msg.topic()} [{msg.partition()}]")
+                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    logger.warning("Topic not created yet, waiting...")
+                    import time
+                    time.sleep(2)
                 else:
-                    raise KafkaException(msg.error())
+                    logger.error(f"Kafka error: {msg.error()}")
             else:
                 row = process_message(msg.value())
                 if row:
