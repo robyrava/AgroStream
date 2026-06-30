@@ -98,6 +98,17 @@ def main():
                             """, row)
                         conn.commit()
                         logger.info(f"Inserted metric for sensor {row[0]}")
+                        
+                        # --- USE CASE 1: Irrigazione Intelligente ---
+                        # Se row[2] (soil_moisture) scende sotto la soglia critica (es. < 20.0),
+                        # è possibile pubblicare un evento su un nuovo topic Kafka 'alerts-irrigation'
+                        # o invocare direttamente un servizio Cloud Function per attivare le valvole.
+                        
+                        # --- USE CASE 2: Prevenzione Malattie ---
+                        # Se row[3] (air_temp) e row[4] (air_humidity) rimangono costantemente elevati
+                        # (es. > 30°C e > 80% umidità per diverse ore), inviare notifica al sistema
+                        # di allerta per funghi/parassiti.
+                        
                         # Commit offset ONLY after successful insert
                         consumer.commit(asynchronous=False)
                     except psycopg2.Error as e:
